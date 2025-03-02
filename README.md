@@ -2,6 +2,9 @@
 
 A modern, user-friendly web application that allows users to store and retrieve data on the Irys network.
 
+## Live Demo
+Check out the live demo: [https://havardman6000.github.io/deploy-Stoirys/](https://havardman6000.github.io/deploy-Stoirys/)
+
 ## Features
 
 - **Data Storage**:
@@ -124,13 +127,29 @@ Tests are written using Vitest and React Testing Library, ensuring the applicati
 
 ## Deployment
 
-To build the application for production:
+### GitHub Pages Deployment
 
-```
+This project is configured for automatic deployment to GitHub Pages using GitHub Actions:
+
+1. Push your changes to the main branch
+2. GitHub Actions will automatically build and deploy the app
+3. The app will be available at `https://<your-username>.github.io/deploy-Stoirys/`
+
+To deploy manually:
+
+```bash
+# Build the app
 npm run build
+
+# Deploy to GitHub Pages
+# You can use gh-pages or similar tools
+npm install -g gh-pages
+gh-pages -d dist
 ```
 
-The built files will be in the `dist` directory and can be deployed to any static hosting service like Vercel, Netlify, or GitHub Pages.
+### Other Deployment Options
+
+The built files will be in the `dist` directory and can be deployed to any static hosting service like Vercel, Netlify, or AWS S3.
 
 ## Troubleshooting
 

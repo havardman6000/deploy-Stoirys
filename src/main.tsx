@@ -19,7 +19,7 @@ import { IrysProvider } from './providers/IrysProvider.tsx'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/deploy-Stoirys">
       <IrysProvider>
         <App />
       </IrysProvider>

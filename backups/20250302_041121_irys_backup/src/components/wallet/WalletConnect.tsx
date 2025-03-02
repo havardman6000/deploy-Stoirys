@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useIrys } from '../../hooks/useIrys';
 import Button from '../common/Button';
-import  from './NetworkSelector';
+import NetworkSelector from './NetworkSelector';
 import { useIrysContext } from '../../providers/IrysProvider';
 import { getEthereum } from '../../config/polyfills';
 import { irysServiceSafe } from '../../services/irysServiceSafe';
