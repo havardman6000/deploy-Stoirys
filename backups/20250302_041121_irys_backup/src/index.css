@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: #0F172A;
+  background-color: #F8FAFC;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #0066FF;
+  text-decoration: inherit;
+  transition: color 0.15s;
+}
+a:hover {
+  color: #0052CC;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+/* Remove default button styles to use our custom design */
+button {
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Add custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Add the animation utilities */
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  .animate-popIn {
+    animation: popIn 0.2s ease-out forwards;
+  }
+}
+
+/* Custom utility classes */
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 text-text-secondary rounded-md hover:bg-slate-100 transition-colors;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-blue-50 text-primary font-medium;
+  }
+  
+  .file-list-header {
+    @apply text-text-secondary text-sm font-medium uppercase tracking-wider py-2;
+  }
+  
+  .file-list-row {
+    @apply flex items-center border-b border-border-light py-3 hover:bg-slate-50 transition-colors;
+  }
+  
+  .file-icon {
+    @apply flex-shrink-0 w-8 h-8 mr-3 text-text-secondary;
+  }
+  
+  .file-name {
+    @apply text-text-primary font-medium truncate;
+  }
+  
+  .file-meta {
+    @apply text-text-secondary text-sm;
+  }
+}
+
+/* Light/dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #F8FAFC;
+    background-color: #0F172A;
+  }
+  a:hover {
+    color: #38BDF8;
+  }
+}
