@@ -1,14 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Purple/blue square blocks (letter I) -->
-  <rect x="12" y="5" width="16" height="30" rx="2" fill="#4352FF"/>
-  <!-- STOIRYS text -->
-  <path d="M62 12H65.5C69.5 12 72 14 72 17.5C72 21 69.5 23 65.5 23H62V12ZM65.5 21C68 21 69.5 19.5 69.5 17.5C69.5 15.5 68 14 65.5 14H64.5V21H65.5Z" fill="#2563EB"/>
-  <path d="M78 12H80.5V23H78V12Z" fill="#2563EB"/>
-  <path d="M87 12H89.5L94 23H91.5L90.5 20H86L85 23H82.5L87 12ZM87 18H89.5L88.25 15L87 18Z" fill="#2563EB"/>
-  <path d="M100 12H102.5V21H108V23H100V12Z" fill="#2563EB"/>
-  <path d="M115.5 12H118V23H115.5V12Z" fill="#2563EB"/>
-  <path d="M124 12H126.5L131 18V12H133.5V23H131L126.5 17V23H124V12Z" fill="#2563EB"/>
-  <path d="M141 12H143.5V23H141V18.5L139 21.5L137 18.5V23H134.5V12H137L139 15L141 12Z" fill="#2563EB"/>
-  <path d="M150 20.5L152 19C152.5 20 153.5 21 155 21C156.5 21 157 20.5 157 19.5C157 18.5 156 18 154.5 17.5C152 16.5 150 15.5 150 13C150 11 152 10 154.5 10C156.5 10 158 11 159 12.5L157 14C156.5 13 155.5 12 154.5 12C153.5 12 152.5 12.5 152.5 13.5C152.5 14.5 153.5 15 155 15.5C157.5 16.5 159.5 17.5 159.5 20C159.5 22.5 157.5 23.5 155 23.5C152.5 23.5 151 22 150 20.5Z" fill="#2563EB"/>
+<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Blue rectangle on the left -->
+  <rect x="20" y="15" width="40" height="60" rx="2" fill="#4646FF"/>
+  
+  <!-- "DIALINMS" text -->
+  <text x="80" y="42" font-family="Arial, sans-serif" font-size="24" font-weight="bold" letter-spacing="5" fill="#4646FF">D I A L I N M S</text>
 </svg> 
