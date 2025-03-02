@@ -107,6 +107,15 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ onConnectionChange }) => 
     }
   }, [address, onConnectionChange]);
 
+  // Update walletAddress when address changes
+  useEffect(() => {
+    if (address) {
+      setWalletAddress(address);
+    } else {
+      setWalletAddress('');
+    }
+  }, [address]);
+
   // Update error message when irysError changes
   useEffect(() => {
     if (irysError) {
@@ -477,7 +486,6 @@ const WalletConnect: React.FC<WalletConnectProps> = ({ onConnectionChange }) => 
 
   const toggleShowAddress = () => {
     setShowAddress(!showAddress);
-    setWalletAddress(address || '');
   };
 
   if (networkError) {

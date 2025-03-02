@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Blue rectangle -->
-  <rect x="5" y="5" width="30" height="30" rx="2" fill="#4646FF"/>
+  <!-- Purple square with white "I" cutout -->
+  <rect x="0" y="0" width="40" height="40" rx="5" fill="#5f3dc4"/>
+  <rect x="14" y="5" width="12" height="30" rx="0" fill="white"/>
 </svg> 
