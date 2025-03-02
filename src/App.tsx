@@ -4,7 +4,7 @@ import WalletConnect from './components/wallet/WalletConnect';
 import StorageTab from './components/storage/StorageTab';
 import RetrievalTab from './components/retrieval/RetrievalTab';
 import History from './components/common/History';
-import logo from './assets/irys-logo.svg';
+import logo from './assets/stoirys-logo.svg';
 import { useIrys } from './hooks/useIrys';
 import IrysTokensUpload from './components/IrysTokensUpload';
 import SignaturePrompt from './components/common/SignaturePrompt';
