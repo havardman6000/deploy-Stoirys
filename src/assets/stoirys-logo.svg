@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Blue rectangle on the left -->
-  <rect x="20" y="15" width="40" height="60" rx="2" fill="#4646FF"/>
-  
-  <!-- "DIALINMS" text -->
-  <text x="80" y="42" font-family="Arial, sans-serif" font-size="24" font-weight="bold" letter-spacing="5" fill="#4646FF">D I A L I N M S</text>
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Purple square with white "I" cutout -->
+  <rect x="10" y="10" width="40" height="40" rx="5" fill="#5f3dc4"/>
+  <rect x="24" y="15" width="12" height="30" rx="0" fill="white"/>
 </svg> 
