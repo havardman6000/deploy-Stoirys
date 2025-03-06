@@ -13,9 +13,9 @@ import './config/stream-patch.js';
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App.tsx'
+import App from './App'
 import './index.css'
-import { IrysProvider } from './providers/IrysProvider.tsx'
+import { IrysProvider } from './providers/IrysProvider'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

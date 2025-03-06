@@ -52,6 +52,12 @@ const IrysContext = createContext<IrysContextType>(initialContext);
 // Create custom hook
 export const useIrys = () => useContext(IrysContext);
 
+// Add Tag type definition
+interface Tag {
+  name: string;
+  value: string;
+}
+
 // Provider component
 export function IrysProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
@@ -201,14 +207,12 @@ export function IrysProvider({ children }: { children: React.ReactNode }) {
     setErrorMessage(null);
     
     try {
-      // Prepare metadata as tags
-      const tags = [];
-      
-      // Add standard tags
+      // Update the tags array initialization
+      const tags: Tag[] = [];
       tags.push({ name: "Content-Type", value: file.type });
       tags.push({ name: "App-Name", value: "Stoirys" });
-      
-      // Add custom metadata as tags
+
+      // For the dynamic tags
       if (metadata) {
         for (const [key, value] of Object.entries(metadata)) {
           if (value && typeof value === 'string') {

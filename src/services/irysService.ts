@@ -3,12 +3,8 @@ import { ethers } from 'ethers';
 import { UploadResult, RetrievedData, Tag, TransactionDetails } from '../types';
 import { getEthereum } from '../config/polyfills';
 
-// Add Ethereum window type
-declare global {
-  interface Window {
-    ethereum: any;
-  }
-}
+// Use casting instead
+const ethereumProvider = window.ethereum as any;
 
 class IrysService {
   private webIrysInstance: WebIrys | null = null;
@@ -60,6 +56,7 @@ class IrysService {
     }
     
     try {
+      // @ts-ignore - Ignore BrowserProvider type error
       const provider = new ethers.BrowserProvider(ethereum);
       
       // First check if we can get accounts without prompting

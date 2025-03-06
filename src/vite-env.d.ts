@@ -71,17 +71,23 @@ declare module "*.json" {
   export default value;
 }
 
-// Define ethers provider with request method
+// Define a more permissive Provider interface
 interface Provider {
-  request?: (...args: any[]) => Promise<any>;
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
   on?: (event: string, callback: any) => void;
   removeListener?: (event: string, callback: any) => void;
+  isMetaMask?: boolean;
+  chainId?: string;
+  selectedAddress?: string;
+  _metamask?: any;
+  [key: string]: any; // Allow any additional properties
 }
 
 interface Window {
   ethereum?: Provider;
   irysInstance?: any;
   navigateToAboutStoirys?: () => void;
+  setActiveTab?: (tab: string) => void;
 }
 
 // Define environment variables

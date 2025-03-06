@@ -169,6 +169,7 @@ export const useIrys = () => {
     uploadData,
     retrieveData,
     fundNode,
+    uploadDataWithIrysTokens: uploadData,
     getGatewayUrl: irysService.getGatewayUrl,
     getNodeUrl: irysService.getNodeUrl,
     getExplorerUrl: irysService.getExplorerUrl,

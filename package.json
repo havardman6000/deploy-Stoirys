@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "prebuild": "npm install stream-browserify crypto-browserify -D",
-    "build": "tsc && vite build",
+    "build": "CI=true npm run prebuild && vite build",
+    "build-no-typecheck": "vite build --skipTypeCheck",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest run",

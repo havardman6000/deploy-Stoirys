@@ -243,7 +243,8 @@ const IrysTokensUpload: React.FC = () => {
           data: {
             contentType: finalTags.find(tag => tag.name === 'Content-Type')?.value || 'unknown',
             name: uploadType === 'file' ? selectedFile?.name : 'Text content'
-          }
+          },
+          timestamp: Date.now()
         };
         addHistoryItem(historyItem);
       }

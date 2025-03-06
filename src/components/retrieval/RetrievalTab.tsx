@@ -173,7 +173,7 @@ const RetrievalTab = () => {
 
     // Update the input field with the clean ID
     setTransactionId(cleanId);
-    
+
     setLoading(true);
     setError('');
     setRetrievedData(null);
@@ -235,7 +235,7 @@ const RetrievalTab = () => {
         }
         
         setFileName(fileName);
-         
+        
         // Add to history
         addHistoryItem({
           id: cleanId,
@@ -295,7 +295,7 @@ const RetrievalTab = () => {
         </div>
       );
     }
-
+    
     if (error) {
       return (
         <div className="bg-[#1a1b1e] border border-[#3a3b3e] rounded-lg p-6 text-center">
@@ -459,28 +459,28 @@ const RetrievalTab = () => {
                     />
                   ) : (
                     <div className="text-gray-400">Unable to display image</div>
-                  )}
-                </div>
+          )}
+        </div>
               ) : dataType.includes('video/') ? (
                 <div className="flex justify-center">
-                  <video 
-                    controls 
+          <video 
+            controls 
                     className="max-w-full max-h-[500px] rounded"
                     src={typeof retrievedData.data === 'string' ? retrievedData.data : ''}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
               ) : dataType.includes('audio/') ? (
                 <div className="flex justify-center">
-                  <audio 
-                    controls 
-                    className="w-full"
+          <audio 
+            controls 
+            className="w-full"
                     src={typeof retrievedData.data === 'string' ? retrievedData.data : ''}
-                  >
-                    Your browser does not support the audio tag.
-                  </audio>
-                </div>
+          >
+            Your browser does not support the audio tag.
+          </audio>
+        </div>
               ) : dataType.includes('application/pdf') ? (
                 <div className="flex justify-center">
                   <iframe 
@@ -620,8 +620,8 @@ const RetrievalTab = () => {
                 </svg>
               </div>
             </div>
-            <Button
-              onClick={() => handleRetrieve()}
+            <Button 
+              onClick={() => handleRetrieve()} 
               disabled={loading || !transactionId}
               className="bg-[#00ffd5] hover:bg-[#00e6c0] text-black px-4 py-2"
             >
@@ -635,7 +635,7 @@ const RetrievalTab = () => {
               )}
             </Button>
           </div>
-          
+
           {error && (
             <div className="mt-4 p-3 bg-red-900/50 border border-red-700 text-red-200 rounded">
               {error}

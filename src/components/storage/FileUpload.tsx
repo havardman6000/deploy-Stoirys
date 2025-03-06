@@ -11,6 +11,15 @@ interface FileUploadProps {
   maxSize?: number; // In bytes
 }
 
+interface WalletStatus {
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+  account: any;
+  error?: string;
+  chainName?: string;
+  isChecking?: boolean;
+}
+
 const FileUpload: React.FC<FileUploadProps> = ({ 
   onUploadSuccess, 
   maxSize = 10 * 1024 * 1024 // Reduce default to 10MB from 30MB
@@ -20,9 +29,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
-  const [walletStatus, setWalletStatus] = useState<{ isConnected: boolean; isChecking: boolean }>({ 
-    isConnected: false, 
-    isChecking: false 
+  const [walletStatus, setWalletStatus] = useState<WalletStatus>({ 
+    isConnected: false,
+    isCorrectNetwork: false,
+    account: null,
+    error: undefined,
+    chainName: undefined,
+    isChecking: false
   });
   const [tags, setTags] = useState<Tag[]>([
     { name: 'Content-Type', value: '' },
@@ -41,11 +54,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
         console.log('Wallet connection status:', status);
         setWalletStatus({ 
           isConnected: status.isConnected && status.isCorrectNetwork, 
-          isChecking: false 
+          isCorrectNetwork: status.isCorrectNetwork,
+          isChecking: false,
+          account: status.account,
+          chainName: status.chainName,
+          error: status.error
         });
       } catch (err) {
         console.error('Error checking wallet:', err);
-        setWalletStatus({ isConnected: false, isChecking: false });
+        setWalletStatus({ 
+          isConnected: false, 
+          isCorrectNetwork: false,
+          isChecking: false,
+          account: null,
+          error: (err as Error).message,
+          chainName: undefined
+        });
       }
     };
     
@@ -144,8 +168,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const walletStatus = await verifyWalletConnected();
       console.log('Wallet status before upload:', walletStatus);
       setWalletStatus({ 
-        isConnected: walletStatus.isConnected && walletStatus.isCorrectNetwork, 
-        isChecking: false 
+        isConnected: walletStatus.isConnected, 
+        isCorrectNetwork: walletStatus.isCorrectNetwork,
+        isChecking: false,
+        account: walletStatus.account,
+        chainName: walletStatus.chainName,
+        error: walletStatus.error
       });
       
       if (!walletStatus.isConnected) {
@@ -197,7 +225,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
           type: 'upload',
           name: file.name,
           contentType: file.type,
-          size: file.size
+          size: file.size,
+          timestamp: Date.now()
         });
         
         // Reset the form after a delay
