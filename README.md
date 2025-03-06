@@ -1,161 +1,72 @@
-# Irys Storage App
+# Stoirys - Decentralized Storage App
 
-A modern, user-friendly web application that allows users to store and retrieve data on the Irys network.
-
-## Live Demo
-Check out the live demo: [https://havardman6000.github.io/deploy-Stoirys/](https://havardman6000.github.io/deploy-Stoirys/)
+Stoirys is a decentralized storage application built with React, TypeScript, Vite, and utilizing the Irys network for permanent, decentralized storage. The app allows users to connect their Ethereum wallet (on Sepolia testnet), upload files, and retrieve them later.
 
 ## Features
 
-- **Data Storage**:
-  - Text input with character counter
-  - File upload with drag-and-drop functionality
-  - Custom metadata tags
-  - Support for multiple file types
+- Connect to MetaMask or other Ethereum wallets
+- Fund your Irys balance using Sepolia ETH
+- Upload files to Irys decentralized storage
+- Download and manage uploaded files
+- View transaction history
+- Firebase integration for additional data management
 
-- **Data Retrieval**:
-  - Retrieve data using transaction IDs
-  - Preview content (text, JSON, images, etc.)
-  - Download retrieved files
+## Setup
 
-- **Wallet Integration**:
-  - Connect with MetaMask or other Ethereum wallets
-  - View and fund your Irys balance
-  - Switch between testnet and mainnet environments
-
-- **Network Selection**:
-  - Easily switch between Irys testnet and mainnet
-  - Visual indicator of current network
-  - Transaction history specific to each network
-
-- **History**:
-  - Track your uploads and retrievals
-  - Quick access to previous transactions
-  - Clear or remove individual history items
-
-## Technologies Used
-
-- React.js with TypeScript
-- Tailwind CSS for styling
-- Irys SDK (@irys/sdk) for blockchain integration
-- Ethers.js for wallet connectivity
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v14 or later)
-- npm or yarn
-- MetaMask or another Ethereum wallet browser extension
-
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/irys-storage-app.git
-   cd irys-storage-app
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Create a `.env` file in the root directory with the following variables:
-   ```
-   VITE_IRYS_DEVNET=true
-   VITE_ETHEREUM_RPC_URL=your_ethereum_rpc_url
-   ```
-
-4. Start the development server:
-   ```
-   npm run dev
-   ```
-
-5. Open your browser and navigate to `http://localhost:5173`
-
-## Usage
-
-### Connecting to Testnet vs Mainnet
-
-1. Connect your wallet using the "Connect Wallet" button.
-2. Once connected, you'll see your current network indicated (Testnet or Mainnet).
-3. Use the network selector buttons to switch between Testnet and Mainnet.
-4. When using Testnet:
-   - Transactions have no real cost (use test tokens)
-   - Perfect for development and testing
-   - Data stored on testnet is not guaranteed to be permanent
-5. When using Mainnet:
-   - Transactions require real ETH
-   - Data is stored permanently on the Irys network
-   - Use for production applications and permanent storage
-
-### Storing Data
-
-1. Connect your wallet and select your desired network (Testnet/Mainnet)
-2. Navigate to the "Store Data" tab
-3. Choose between text input or file upload
-4. Add optional metadata tags
-5. Click "Upload" to store your data on the Irys network
-6. Once complete, you'll receive a transaction ID that can be used to retrieve your data
-
-### Retrieving Data
-
-1. Navigate to the "Retrieve Data" tab
-2. Enter the transaction ID of the data you want to retrieve
-3. Make sure you're on the right network (Testnet/Mainnet) where the data was originally stored
-4. Click "Retrieve Data"
-5. View or download the retrieved content
-
-## Development
-
-The application is built using modern React practices with TypeScript for type safety. Key components include:
-
-- **Hooks**: Custom hooks like `useIrys` and `useHistory` manage app state and functionality
-- **Components**: Modular, reusable UI elements organized by feature
-- **Services**: The `irysService` abstracts the interactions with the Irys network
-
-### Testing
-
-To run tests:
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables:
+   - Create a `.env.local` file and add your Firebase configuration
 
 ```
-npm test
+# Firebase Configuration
+VITE_FIREBASE_API_KEY="YOUR_FIREBASE_API_KEY"
+VITE_FIREBASE_AUTH_DOMAIN="YOUR_FIREBASE_AUTH_DOMAIN"
+VITE_FIREBASE_PROJECT_ID="YOUR_FIREBASE_PROJECT_ID"
+VITE_FIREBASE_STORAGE_BUCKET="YOUR_FIREBASE_STORAGE_BUCKET"
+VITE_FIREBASE_MESSAGING_SENDER_ID="YOUR_FIREBASE_MESSAGING_SENDER_ID"
+VITE_FIREBASE_APP_ID="YOUR_FIREBASE_APP_ID"
 ```
 
-Tests are written using Vitest and React Testing Library, ensuring the application functions correctly.
+4. Start the development server: `npm run dev`
 
-## Deployment
+## Firebase Setup
 
-### GitHub Pages Deployment
+To enable the Firebase functionality:
 
-This project is configured for automatic deployment to GitHub Pages using GitHub Actions:
+1. Create a Firebase project at [https://console.firebase.google.com/](https://console.firebase.google.com/)
+2. Add a Web App to your Firebase project
+3. Enable Firestore Database in your project
+4. Create the following collections:
+   - `users` - Stores user data
+   - `folders` - Stores folder structure
+   - `files` - Stores file metadata
+5. Copy your Firebase configuration to the `.env.local` file
 
-1. Push your changes to the main branch
-2. GitHub Actions will automatically build and deploy the app
-3. The app will be available at `https://<your-username>.github.io/deploy-Stoirys/`
+## Deploy
 
-To deploy manually:
+To build the app for production:
 
-```bash
-# Build the app
+```
 npm run build
-
-# Deploy to GitHub Pages
-# You can use gh-pages or similar tools
-npm install -g gh-pages
-gh-pages -d dist
 ```
 
-### Other Deployment Options
+This will create a production-ready build in the `dist` directory that can be deployed to any static site hosting service.
 
-The built files will be in the `dist` directory and can be deployed to any static hosting service like Vercel, Netlify, or AWS S3.
+## Environment
+
+The app is configured to work with the following:
+
+- Ethereum Sepolia testnet
+- Irys network
+- Firebase (optional, falls back to local storage if not configured)
 
 ## Troubleshooting
 
-- **Wallet Connection Issues**: Ensure MetaMask is installed and on the correct network
-- **Transaction Failures**: Check your wallet balance and network settings
-- **Data Retrieval Problems**: Verify you're on the same network where the data was stored
+- Make sure your wallet is connected to the Sepolia testnet
+- Get Sepolia ETH from a faucet if you need test ETH
+- Check that your Firebase configuration is correct
+- Ensure you have the correct permissions set in Firebase Firestore rules
 
 ## License
 

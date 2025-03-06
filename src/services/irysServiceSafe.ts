@@ -8,7 +8,11 @@ import { getEthereum } from '../config/polyfills';
 // Add Ethereum window type
 declare global {
   interface Window {
-    ethereum: any;
+    ethereum?: {
+      request?: (...args: any[]) => Promise<any>;
+      on?: (event: string, callback: any) => void;
+      removeListener?: (event: string, callback: any) => void;
+    };
   }
 }
 
@@ -30,30 +34,19 @@ class IrysServiceSafe {
   
   // Try multiple gateways to maximize chances of retrieval
   getAccessibleGatewayUrls(transactionId: string): string[] {
-    const urls = [];
+    // Prioritize the direct gateway URL
+    const directGatewayUrl = `https://gateway.irys.xyz/${transactionId}`;
+    const devnetGatewayUrl = `https://gateway.irys.xyz/devnet/${transactionId}`;
     
-    // Add direct gateway URLs - try both with and without network prefix
-    urls.push(`https://gateway.irys.xyz/${transactionId}`);
-    
-    // Try with network-specific paths
-    if (this.isDevnet) {
-      urls.push(`https://gateway.irys.xyz/devnet/${transactionId}`);
-    } else {
-      urls.push(`https://gateway.irys.xyz/mainnet/${transactionId}`);
-    }
-    
-    // Add explorer URLs - both standard and direct
-    urls.push(`https://storage-explorer.irys.xyz/tx/${transactionId}`);
-    
-    // Add Arweave gateway as fallback for Irys transactions
-    urls.push(`https://arweave.net/${transactionId}`);
-    
-    // Always add both with and without network prefix as fallbacks
-    urls.push(`https://gateway.irys.xyz/mainnet/${transactionId}`);
-    urls.push(`https://gateway.irys.xyz/devnet/${transactionId}`);
-    
-    console.log(`[irysServiceSafe] Gateway URLs for ${transactionId}:`, urls);
-    return urls;
+    // Return URLs in priority order
+    return [
+      directGatewayUrl,
+      `https://gateway.irys.xyz/mainnet/${transactionId}`,
+      `https://storage-explorer.irys.xyz/tx/${transactionId}`,
+      `https://arweave.net/${transactionId}`,
+      `https://gateway.irys.xyz/mainnet/${transactionId}`,
+      devnetGatewayUrl
+    ];
   }
   
   getNodeUrl(): string {
@@ -70,12 +63,15 @@ class IrysServiceSafe {
   private async hasWalletChanged(): Promise<boolean> {
     try {
       const ethereum = getEthereum();
-      if (!ethereum) {
-        console.log('[irysServiceSafe] No Ethereum provider found, wallet changed');
-        return true;
+      if (!ethereum || !ethereum.request) {
+        throw new Error("Ethereum provider not available");
       }
       
-      const accounts = await ethereum.request({ method: 'eth_accounts' });
+      // Request accounts from provider
+      const accounts = await ethereum.request({
+        method: 'eth_accounts'
+      });
+      
       if (!accounts || accounts.length === 0) {
         console.log('[irysServiceSafe] No accounts available, wallet changed');
         return true;
@@ -100,9 +96,8 @@ class IrysServiceSafe {
   async isWalletConnected(): Promise<boolean> {
     try {
       const ethereum = getEthereum();
-      if (!ethereum) {
-        console.log('[irysServiceSafe] No Ethereum provider found');
-        return false;
+      if (!ethereum || !ethereum.request) {
+        throw new Error("Ethereum provider not available");
       }
       
       // Use eth_accounts for a non-intrusive check of already-permitted accounts
@@ -133,165 +128,156 @@ class IrysServiceSafe {
   }
   
   async connectToIrys(force: boolean = false): Promise<any> {
-    console.log('[irysServiceSafe] Connecting to Irys...');
-    
-    // To avoid race conditions and duplicate connections
-    if (this.connectionInProgress) {
-      console.log('[irysServiceSafe] Connection already in progress, waiting...');
-      // Wait for existing connection to complete
-      while (this.connectionInProgress) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // If we now have a valid connection, return it
-      if (this.irysUploader && !force) {
-        const hasChanged = await this.hasWalletChanged();
-        if (!hasChanged) {
-          return this.irysUploader;
-        }
-      }
-    }
-    
-    this.connectionInProgress = true;
-    
     try {
-      // First check if we have a valid connection already
-      if (this.irysUploader && !force) {
-        const hasChanged = await this.hasWalletChanged();
-        if (!hasChanged) {
-          return this.irysUploader;
-        }
-        // Otherwise continue to connect with new account
+      // Check if already connecting
+      if (this.connectionInProgress && !force) {
+        console.log('[irysServiceSafe] Connection already in progress');
+        return this.irysUploader;
       }
       
-      // Get the Ethereum provider
-      const ethereum = getEthereum();
-      if (!ethereum) {
-        throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.');
-      }
-      
-      // Get accounts - first try without prompting
-      let accounts;
-      try {
-        console.log('[irysServiceSafe] Attempting to get accounts without prompt');
-        accounts = await ethereum.request({ method: 'eth_accounts' });
-        
-        if (accounts && accounts.length > 0) {
-          console.log('[irysServiceSafe] Found account without prompting:', accounts[0]);
-        } else {
-          // If no accounts, try requesting them (this will prompt user if needed)
-          console.log('[irysServiceSafe] No accounts found, requesting with prompt');
-          accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        }
-      } catch (error) {
-        console.error('[irysServiceSafe] Error getting accounts:', error);
-        throw new Error('Failed to connect to wallet. Please make sure your wallet is unlocked and try again.');
-      }
-      
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No Ethereum accounts found. Please unlock your wallet and try again.');
-      }
-      
-      const address = accounts[0];
-      console.log('[irysServiceSafe] Using account for Irys connection:', address);
-      
-      // Check if we're on the IRYS Testing Network
-      let isIrysTestingNetwork = false;
-      try {
-        const chainId = await ethereum.request({ method: 'eth_chainId' });
-        console.log('[irysServiceSafe] Using network chainId for connection:', chainId);
-        sessionStorage.setItem('lastChainId', chainId);
-        
-        // If we're on the IRYS Testing Network (chainId 0x4f6), use special configuration
-        isIrysTestingNetwork = chainId === '0x4f6';
-        if (isIrysTestingNetwork) {
-          console.log('[irysServiceSafe] Detected IRYS Testing Network (chain 0x4f6)');
-        }
-      } catch (chainError) {
-        console.warn('[irysServiceSafe] Error checking chain ID during connection:', chainError);
-      }
-      
-      // Create a provider using the Ethereum object
-      console.log('[irysServiceSafe] Creating Irys connection with WebUploader...');
+      // Set the connection flag
+      this.connectionInProgress = true;
       
       try {
-        // UPDATED: Use ethers BrowserProvider with the EthersV6Adapter
-        const ethersProvider = new ethers.BrowserProvider(ethereum);
-        console.log('[irysServiceSafe] Created ethers BrowserProvider');
+        // Get the Ethereum provider
+        const ethereum = getEthereum();
+        if (!ethereum || !ethereum.request) {
+          throw new Error('Ethereum provider not found. Please install MetaMask or another Web3 wallet.');
+        }
         
         // Get the appropriate URL based on network
-        let providerUrl;
-        if (isIrysTestingNetwork) {
-          providerUrl = 'https://testnet-rpc.irys.xyz/v1/execution-rpc';
-        } else {
-          providerUrl = this.isDevnet ? 'https://devnet.irys.xyz' : 'https://node1.irys.xyz';
+        const nodeUrl = this.getNodeUrl();
+        console.log('[irysServiceSafe] Using Irys node URL:', nodeUrl);
+        
+        // Use dynamic import to avoid issues with ethers in SSR environments
+        const provider = await this.createProviderFromEthereum(ethereum);
+        
+        // Get accounts - first try without prompting
+        let accounts;
+        try {
+          console.log('[irysServiceSafe] Attempting to get accounts without prompt');
+          accounts = await ethereum.request({ method: 'eth_accounts' });
+          
+          if (accounts && accounts.length > 0) {
+            console.log('[irysServiceSafe] Found account without prompting:', accounts[0]);
+          } else {
+            // If no accounts, try requesting them (this will prompt user if needed)
+            console.log('[irysServiceSafe] No accounts found, requesting with prompt');
+            accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+          }
+        } catch (error) {
+          console.error('[irysServiceSafe] Error getting accounts:', error);
+          throw new Error('Failed to connect to wallet. Please make sure your wallet is unlocked and try again.');
         }
         
-        console.log(`[irysServiceSafe] Creating WebUploader for ${isIrysTestingNetwork ? 'IRYS Testing Network' : (this.isDevnet ? 'devnet' : 'mainnet')}`);
-        console.log(`[irysServiceSafe] Using provider URL: ${providerUrl}`);
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No Ethereum accounts found. Please unlock your wallet and try again.');
+        }
         
-        // Create uploader with appropriate configuration
-        const uploader = await WebUploader(WebEthereum)
-          .withAdapter(EthersV6Adapter(ethersProvider))
-          .withRpc(providerUrl);
+        const address = accounts[0];
+        console.log('[irysServiceSafe] Using account for Irys connection:', address);
+        
+        // Check if we're on the IRYS Testing Network
+        let isIrysTestingNetwork = false;
+        try {
+          const chainId = await ethereum.request({ method: 'eth_chainId' });
+          console.log('[irysServiceSafe] Using network chainId for connection:', chainId);
+          sessionStorage.setItem('lastChainId', chainId);
+          
+          // If we're on the IRYS Testing Network (chainId 0x4f6), use special configuration
+          isIrysTestingNetwork = chainId === '0x4f6';
+          if (isIrysTestingNetwork) {
+            console.log('[irysServiceSafe] Detected IRYS Testing Network (chain 0x4f6)');
+          }
+        } catch (chainError) {
+          console.warn('[irysServiceSafe] Error checking chain ID during connection:', chainError);
+        }
+        
+        // Create a provider using the Ethereum object
+        console.log('[irysServiceSafe] Creating Irys connection with WebUploader...');
+        
+        try {
+          // UPDATED: Use ethers BrowserProvider with the EthersV6Adapter
+          const ethersProvider = new ethers.BrowserProvider(ethereum);
+          console.log('[irysServiceSafe] Created ethers BrowserProvider');
+          
+          // Get the appropriate URL based on network
+          let providerUrl;
+          if (isIrysTestingNetwork) {
+            providerUrl = 'https://testnet-rpc.irys.xyz/v1/execution-rpc';
+          } else {
+            providerUrl = this.isDevnet ? 'https://devnet.irys.xyz' : 'https://node1.irys.xyz';
+          }
+          
+          console.log(`[irysServiceSafe] Creating WebUploader for ${isIrysTestingNetwork ? 'IRYS Testing Network' : (this.isDevnet ? 'devnet' : 'mainnet')}`);
+          console.log(`[irysServiceSafe] Using provider URL: ${providerUrl}`);
+          
+          // Create uploader with appropriate configuration
+          const uploader = await WebUploader(WebEthereum)
+            .withAdapter(EthersV6Adapter(ethersProvider))
+            .withRpc(providerUrl);
 
-        // Add special handling for IRYS Testing Network balances
-        if (isIrysTestingNetwork) {
-          console.log('[irysServiceSafe] Using IRYS Testing Network - implementing special balance handling');
-          // Custom implementation to handle testing network balance check
-          const originalGetBalance = uploader.getBalance;
-          uploader.getBalance = async function(address?: string) {
-            try {
-              // Try the default method first
-              const balance = await originalGetBalance.call(this, address);
-              console.log('[irysServiceSafe] Default balance check returned:', balance.toString());
-              
-              // If balance is zero but we're on IRYS Testing Network, double-check with the wallet
-              if (balance.toString() === '0') {
-                console.log('[irysServiceSafe] Zero balance detected, checking with wallet directly');
-                try {
-                  const walletAddress = address || await ethereum.request({ method: 'eth_accounts' }).then((accounts: string[]) => accounts[0]);
-                  if (!walletAddress) {
-                    console.warn('[irysServiceSafe] No wallet address available for balance check');
-                    return balance;
+          // Add special handling for IRYS Testing Network balances
+          if (isIrysTestingNetwork) {
+            console.log('[irysServiceSafe] Using IRYS Testing Network - implementing special balance handling');
+            // Custom implementation to handle testing network balance check
+            const originalGetBalance = uploader.getBalance;
+            uploader.getBalance = async function(address?: string) {
+              try {
+                // Try the default method first
+                const balance = await originalGetBalance.call(this, address);
+                console.log('[irysServiceSafe] Default balance check returned:', balance.toString());
+                
+                // If balance is zero but we're on IRYS Testing Network, double-check with the wallet
+                if (balance.toString() === '0') {
+                  console.log('[irysServiceSafe] Zero balance detected, checking with wallet directly');
+                  try {
+                    const walletAddress = address || await ethereum.request({ method: 'eth_accounts' }).then((accounts: string[]) => accounts[0]);
+                    if (!walletAddress) {
+                      console.warn('[irysServiceSafe] No wallet address available for balance check');
+                      return balance;
+                    }
+                    
+                    const walletBalance = await ethereum.request({
+                      method: 'eth_getBalance',
+                      params: [walletAddress, 'latest']
+                    });
+                    
+                    if (walletBalance && walletBalance !== '0x0') {
+                      console.log('[irysServiceSafe] Wallet reports non-zero balance, using that instead:', walletBalance);
+                      // Create a BigNumber with the same type as the original balance
+                      // This ensures we return the correct type
+                      return balance.constructor(walletBalance.toString());
+                    }
+                  } catch (walletErr) {
+                    console.error('[irysServiceSafe] Error checking wallet balance:', walletErr);
                   }
-                  
-                  const walletBalance = await ethereum.request({
-                    method: 'eth_getBalance',
-                    params: [walletAddress, 'latest']
-                  });
-                  
-                  if (walletBalance && walletBalance !== '0x0') {
-                    console.log('[irysServiceSafe] Wallet reports non-zero balance, using that instead:', walletBalance);
-                    // Create a BigNumber with the same type as the original balance
-                    // This ensures we return the correct type
-                    return balance.constructor(walletBalance.toString());
-                  }
-                } catch (walletErr) {
-                  console.error('[irysServiceSafe] Error checking wallet balance:', walletErr);
                 }
+                
+                return balance;
+              } catch (error) {
+                console.error('[irysServiceSafe] Error in getBalance:', error);
+                throw error;
               }
-              
-              return balance;
-            } catch (error) {
-              console.error('[irysServiceSafe] Error in getBalance:', error);
-              throw error;
-            }
-          };
+            };
+          }
+          
+          console.log(`[irysServiceSafe] Connected successfully to ${isIrysTestingNetwork ? 'IRYS Testing Network' : (this.isDevnet ? 'Irys devnet' : 'Irys mainnet')}`);
+          this.irysUploader = uploader;
+          return uploader;
+        } catch (readyError) {
+          console.error('[irysServiceSafe] Error connecting to Irys node:', readyError);
+          throw new Error(`Failed to connect to Irys: ${readyError instanceof Error ? readyError.message : 'Unknown error'}`);
         }
-        
-        console.log(`[irysServiceSafe] Connected successfully to ${isIrysTestingNetwork ? 'IRYS Testing Network' : (this.isDevnet ? 'Irys devnet' : 'Irys mainnet')}`);
-        this.irysUploader = uploader;
-        return uploader;
-      } catch (readyError) {
-        console.error('[irysServiceSafe] Error connecting to Irys node:', readyError);
-        throw new Error(`Failed to connect to Irys: ${readyError instanceof Error ? readyError.message : 'Unknown error'}`);
+      } catch (error) {
+        console.error('[irysServiceSafe] Error in connectToIrys:', error);
+        throw error;
+      } finally {
+        this.connectionInProgress = false;
       }
     } catch (error) {
       console.error('[irysServiceSafe] Error in connectToIrys:', error);
       throw error;
-    } finally {
-      this.connectionInProgress = false;
     }
   }
   
@@ -329,7 +315,7 @@ class IrysServiceSafe {
           
           // Format to ETH equivalent (with 18 decimals)
           try {
-            const formattedBalance = ethers.formatEther(decimalBalance);
+            const formattedBalance = this.formatEther(decimalBalance);
             console.log('[irysServiceSafe] IRYS network balance:', formattedBalance);
             return formattedBalance;
           } catch (formatError) {
@@ -354,7 +340,7 @@ class IrysServiceSafe {
       
       try {
         // Convert from atomic units (wei) to ETH with better error handling
-        const balance = ethers.formatEther(atomicBalance);
+        const balance = this.formatEther(atomicBalance);
         return balance;
       } catch (formatError) {
         console.warn('[irysServiceSafe] Error formatting balance:', formatError);
@@ -398,7 +384,7 @@ class IrysServiceSafe {
       }
 
       // Parse the amount to the correct format
-      const parsedAmount = ethers.parseEther(amount);
+      const parsedAmount = this.parseEther(amount);
       console.log('[irysServiceSafe] Starting fund operation with amount:', parsedAmount.toString());
 
       try {
@@ -595,7 +581,9 @@ class IrysServiceSafe {
   private async getWalletAddress(): Promise<string | null> {
     try {
       const ethereum = getEthereum();
-      if (!ethereum) return null;
+      if (!ethereum || !ethereum.request) {
+        throw new Error("Ethereum provider not available");
+      }
       
       const accounts = await ethereum.request({ method: 'eth_accounts' });
       if (!accounts || accounts.length === 0) return null;
@@ -620,7 +608,7 @@ class IrysServiceSafe {
     error?: string;
   }> {
     try {
-      if (!window.ethereum) {
+      if (!window.ethereum || !window.ethereum.request) {
         return {
           isConnected: false,
           isCorrectNetwork: false,
@@ -839,251 +827,141 @@ class IrysServiceSafe {
       
       // Fetch transaction tags before trying to get the data
       let tags: Tag[] = [];
+      let transactionSize: number | undefined;
       try {
         // First try to get transaction details from the node
         const txDetails = await this.getTransactionDetails(cleanId);
         if (txDetails && txDetails.tags) {
           tags = txDetails.tags;
           console.log('[irysServiceSafe] Retrieved transaction tags:', tags);
+          
+          // Get the transaction size if available
+          if (txDetails.size) {
+            transactionSize = txDetails.size;
+            console.log(`[irysServiceSafe] Transaction size: ${transactionSize} bytes`);
+          }
         }
-      } catch (tagsError) {
-        console.warn('[irysServiceSafe] Could not fetch transaction tags:', tagsError);
-        // Continue with the data retrieval even if tags couldn't be fetched
-        
-        // Try to deduce the network from the transaction ID format
-        // This is a fallback approach when we can't get tags
-        if (cleanId.length === 43) {
-          console.log('[irysServiceSafe] Transaction ID appears to be an Arweave/Irys ID');
-          // Add a placeholder Network tag for UI display
-          tags.push({ name: 'Network', value: 'IRYS Testnet' });
-        }
+      } catch (error) {
+        console.warn('[irysServiceSafe] Could not fetch transaction tags:', error);
       }
       
-      // Find content-type from tags - this is the most reliable source
-      let contentType = 'application/octet-stream';
+      // Determine content type from tags
+      let contentType = '';
       const contentTypeTag = tags.find(tag => 
         tag.name.toLowerCase() === 'content-type' || 
-        tag.name === 'Content-Type'
+        tag.name.toLowerCase() === 'content-disposition'
       );
       
-      if (contentTypeTag && contentTypeTag.value) {
+      if (contentTypeTag) {
         contentType = contentTypeTag.value;
-        console.log(`[irysServiceSafe] Found content type in tags: ${contentType}`);
       }
       
-      // Try storage explorer first as it's more reliable
-      const storageExplorerUrl = `https://storage-explorer.irys.xyz/tx/${cleanId}`;
-      console.log('[irysServiceSafe] Trying storage explorer URL first:', storageExplorerUrl);
+      // Get filename from tags if available
+      let fileName = '';
+      const fileNameTag = tags.find(tag => 
+        tag.name.toLowerCase() === 'file-name' || 
+        tag.name.toLowerCase() === 'filename' ||
+        tag.name.toLowerCase() === 'name'
+      );
       
+      if (fileNameTag) {
+        fileName = fileNameTag.value;
+      }
+      
+      // Fetch transaction data
+      const gateway = this.getGatewayUrl();
+      const url = `${gateway}/${cleanId}`;
+      console.log(`[irysServiceSafe] Fetching data from: ${url}`);
+      
+      let response;
       try {
-        // Use no-cors mode to avoid CORS issues, but this will make content unreadable
-        // We'll try regular fetch with gateways instead as our primary approach
-        const response = await fetch(storageExplorerUrl, { mode: 'no-cors' });
+        response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Gateway returned ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        // Try alternative gateways if the first one fails
+        console.warn('[irysServiceSafe] Primary gateway failed, trying alternatives');
+        const altGateways = this.getAccessibleGatewayUrls(cleanId);
+        let success = false;
         
-        // With no-cors mode, we can't read the response content
-        // Let's skip this and move directly to the gateways
-        console.log('[irysServiceSafe] Storage explorer fetch status:', response.status);
-      } catch (corsError) {
-        console.warn('[irysServiceSafe] Could not fetch from storage explorer:', corsError);
-      }
-      
-      // Get all possible gateway URLs to try
-      const gatewayUrls = this.getAccessibleGatewayUrls(cleanId);
-      
-      let firstError = null;
-      
-      // Try each gateway URL in sequence
-      for (const gatewayUrl of gatewayUrls) {
-        try {
-          console.log('[irysServiceSafe] Trying gateway URL:', gatewayUrl);
-          
-          // Try to fetch from gateway
-          const response = await fetch(gatewayUrl);
-          if (!response.ok) {
-            console.warn(`[irysServiceSafe] Gateway response error for ${gatewayUrl}: ${response.status} ${response.statusText}`);
-            if (!firstError) {
-              firstError = new Error(`HTTP ${response.status} from ${gatewayUrl}`);
+        for (const altUrl of altGateways) {
+          try {
+            console.log(`[irysServiceSafe] Trying alternate gateway: ${altUrl}`);
+            response = await fetch(altUrl);
+            if (response.ok) {
+              success = true;
+              break;
             }
-            continue; // Try next URL
+          } catch (err) {
+            console.warn(`[irysServiceSafe] Alternative gateway failed: ${err}`);
           }
-          
-          // Get the content type from headers as a fallback, but prioritize tag-based content type
-          const headerContentType = response.headers.get('content-type');
-          let effectiveContentType = contentType;
-          
-          if (!contentTypeTag && headerContentType) {
-            // Only use header content type if we didn't find it in tags
-            effectiveContentType = headerContentType;
-            console.log(`[irysServiceSafe] Using content type from headers: ${effectiveContentType}`);
-          }
-          
-          console.log(`[irysServiceSafe] Effective content type: ${effectiveContentType}`);
-          
-          // For application/octet-stream, we need to check if it might be text
-          // This type is often a generic fallback and doesn't tell us much about the actual content
-          if (effectiveContentType === 'application/octet-stream') {
-            // For small responses, get as arrayBuffer to analyze
-            const buffer = await response.clone().arrayBuffer();
-            
-            if (this.detectIfContentMightBeText(buffer)) {
-              console.log('[irysServiceSafe] Detected text content in application/octet-stream');
-              
-              // It's likely text content, so read it as text
-              const textData = await response.text();
-              
-              // Test a small sample to confirm it's actually text
-              const sampleText = textData.substring(0, 100);
-              console.log(`[irysServiceSafe] Text sample: ${sampleText}`);
-              
-              // If over 85% of the characters are printable, consider it text/plain
-              const printableChars = sampleText.replace(/[^\x20-\x7E\r\n\t]/g, '').length;
-              const ratio = printableChars / sampleText.length;
-              
-              if (ratio > 0.85) {
-                effectiveContentType = 'text/plain';
-                console.log('[irysServiceSafe] Setting content type to text/plain based on content analysis');
-              }
-              
-              return {
-                data: textData,
-                contentType: effectiveContentType,
-                transactionId: cleanId,
-                tags: tags,
-                fileName: `file-${cleanId.substring(0, 8)}.txt`,
-                size: textData.length
-              };
-            }
-          }
-          
-          // Decide how to handle the response based on content type
-          if (effectiveContentType.startsWith('text/') || 
-              effectiveContentType === 'application/json' ||
-              effectiveContentType === 'application/javascript' ||
-              effectiveContentType === 'application/xml' ||
-              effectiveContentType.includes('+json') ||
-              effectiveContentType.includes('+xml')) {
-            // These are definitely text formats
-            const textData = await response.text();
-            
-            // Determine file extension based on content type
-            let extension = 'txt';
-            if (effectiveContentType === 'application/json' || effectiveContentType.includes('+json')) {
-              extension = 'json';
-            } else if (effectiveContentType === 'application/xml' || effectiveContentType.includes('+xml')) {
-              extension = 'xml';
-            } else if (effectiveContentType.includes('javascript')) {
-              extension = 'js';
-            } else if (effectiveContentType.includes('html')) {
-              extension = 'html';
-            } else if (effectiveContentType.includes('css')) {
-              extension = 'css';
-            }
-            
-            return {
-              data: textData,
-              contentType: effectiveContentType,
-              transactionId: cleanId,
-              tags: tags,
-              fileName: `file-${cleanId.substring(0, 8)}.${extension}`,
-              size: textData.length
-            };
-          } else if (effectiveContentType.includes('image/') || 
-                    effectiveContentType.includes('video/') || 
-                    effectiveContentType.includes('audio/') ||
-                    effectiveContentType.includes('application/pdf')) {
-            // These are definitely binary formats
-            const blobData = await response.blob();
-            
-            // Determine file extension based on content type
-            let extension = 'bin';
-            if (effectiveContentType.includes('image/')) {
-              extension = effectiveContentType.replace('image/', '');
-            } else if (effectiveContentType.includes('video/')) {
-              extension = effectiveContentType.replace('video/', '');
-            } else if (effectiveContentType.includes('audio/')) {
-              extension = effectiveContentType.replace('audio/', '');
-            } else if (effectiveContentType.includes('application/pdf')) {
-              extension = 'pdf';
-            }
-            
-            return {
-              data: blobData,
-              contentType: effectiveContentType,
-              transactionId: cleanId,
-              tags: tags,
-              fileName: `file-${cleanId.substring(0, 8)}.${extension}`,
-              size: blobData.size
-            };
-          } else {
-            // For ambiguous types, get as arrayBuffer to analyze
-            const buffer = await response.arrayBuffer();
-            
-            // Check if this might be a text file
-            const mightBeText = this.detectIfContentMightBeText(buffer);
-            
-            if (mightBeText) {
-              // Convert to text if it looks like text content
-              const decoder = new TextDecoder('utf-8');
-              const textData = decoder.decode(buffer);
-              
-              // Return as text with the most appropriate content type
-              return {
-                data: textData,
-                contentType: effectiveContentType === 'application/octet-stream' ? 'text/plain' : effectiveContentType,
-                transactionId: cleanId,
-                tags: tags,
-                fileName: `file-${cleanId.substring(0, 8)}.txt`,
-                size: textData.length
-              };
-            } else {
-              // Return as blob for binary content
-              const blobData = new Blob([buffer], { type: effectiveContentType });
-              return {
-                data: blobData,
-                contentType: effectiveContentType,
-                transactionId: cleanId,
-                tags: tags,
-                fileName: `file-${cleanId.substring(0, 8)}.bin`,
-                size: blobData.size
-              };
-            }
-          }
-        } catch (gatewayError) {
-          console.warn(`[irysServiceSafe] Error with gateway ${gatewayUrl}:`, gatewayError);
-          if (!firstError) {
-            firstError = gatewayError;
-          }
-          // Continue to next gateway URL
+        }
+        
+        if (!success) {
+          throw new Error('All gateways failed to retrieve data');
         }
       }
       
-      // If all gateway URLs fail, create a meaningful fallback response
-      console.error('[irysServiceSafe] All gateway URLs failed, using fallback', firstError);
+      // Infer content type from response if not found in tags
+      if (!contentType && response) {
+        contentType = response.headers.get('content-type') || '';
+        if (contentType.includes(';')) {
+          contentType = contentType.split(';')[0].trim();
+        }
+      }
       
-      // Instead of creating an error message, return null to indicate no data found
-      // This will allow the UI to display a simple "No results found" message
+      // Retrieve data as appropriate type
+      let data: any;
+      
+      // For text formats, return as text
+      if (
+        !contentType || 
+        contentType.includes('text/') || 
+        contentType.includes('json') || 
+        contentType.includes('javascript') || 
+        contentType.includes('xml')
+      ) {
+        data = await response!.text();
+        
+        // Try to parse JSON if the content appears to be JSON
+        if (
+          contentType.includes('json') || 
+          (data.trim().startsWith('{') && data.trim().endsWith('}')) || 
+          (data.trim().startsWith('[') && data.trim().endsWith(']'))
+        ) {
+          try {
+            data = JSON.parse(data);
+          } catch (e) {
+            // Keep as string if not valid JSON
+          }
+        }
+        
+        return {
+          data,
+          contentType,
+          transactionId: cleanId,
+          directUrl: url,
+          tags,
+          fileName,
+          size: transactionSize || data.length,
+        };
+      }
+      
+      // For binary formats, return as ArrayBuffer
+      const buffer = await response!.arrayBuffer();
       return {
-        data: null,
-        contentType: '',  // Use empty string instead of null
+        data: buffer,
+        contentType,
         transactionId: cleanId,
-        directUrl: storageExplorerUrl,
-        tags: tags,
-        fileName: '',  // Use empty string instead of null
-        size: 0
+        directUrl: url,
+        tags,
+        fileName,
+        size: transactionSize || buffer.byteLength,
       };
     } catch (error) {
       console.error('[irysServiceSafe] Error retrieving data:', error);
-      
-      // Return null for any error to simplify error handling in the UI
-      return {
-        data: null,
-        contentType: '',  // Use empty string instead of null
-        transactionId: typeof transactionId === 'string' ? transactionId : String(transactionId),
-        directUrl: `https://storage-explorer.irys.xyz/tx/${transactionId}`,
-        tags: [],
-        fileName: '',  // Use empty string instead of null
-        size: 0
-      };
+      throw error;
     }
   }
   
@@ -1280,7 +1158,9 @@ class IrysServiceSafe {
         blockId: data.block?.id,
         tags: updatedTags,
         explorerUrl: `${this.getExplorerUrl()}/tx/${data.id}`,
-        ownerExplorerUrl
+        ownerExplorerUrl,
+        // Extract size information from transaction data
+        size: data.size || data.data_size || (data.transaction?.bundleData?.length ? parseInt(data.transaction.bundleData.length) : undefined)
       };
       
       return details;
@@ -1349,28 +1229,21 @@ class IrysServiceSafe {
    * These are free tokens that can be used on the testnet for uploads
    */
   async getIrysTestnetTokens(): Promise<any> {
-    console.log('[irysServiceSafe] Requesting IRYS testnet tokens');
-    
     try {
-      // Make sure wallet is connected
-      const walletStatus = await this.checkWalletConnectionStatus();
-      if (!walletStatus.isConnected) {
-        throw new Error('Wallet not connected. Please connect your wallet to get IRYS tokens.');
+      // Check if wallet is connected
+      const connectionStatus = await this.checkWalletConnectionStatus();
+      if (!connectionStatus.isConnected || !connectionStatus.account) {
+        // Change error message to be more technical and less visible to user
+        throw new Error('Wallet connection required for token acquisition.');
       }
       
-      console.log('[irysServiceSafe] Request tokens for wallet:', walletStatus.account);
-      
-      // Get the wallet address
-      const address = walletStatus.account;
-      if (!address) {
-        throw new Error('Could not get wallet address');
-      }
+      console.log('[irysServiceSafe] Request tokens for wallet:', connectionStatus.account);
       
       // If in devnet mode, use the devnet faucet
       if (this.isDevnet) {
         console.log('[irysServiceSafe] Using devnet faucet for token request');
         const initialBalance = await this.getBalance();
-        const success = await this.requestDevnetTokens(address);
+        const success = await this.requestDevnetTokens(connectionStatus.account);
         
         if (!success) {
           throw new Error('Failed to get tokens from devnet faucet');
@@ -1401,7 +1274,7 @@ class IrysServiceSafe {
         
         // Build the request to the faucet API
         // Special case for chainId 0x4f6 which should use the correct token faucet
-        const chainId = walletStatus.chainId || '';
+        const chainId = connectionStatus.chainId || '';
         const isForcedIrysNetwork = chainId === '0x4f6';
         
         // Use a direct IRYS faucet URL that works better
@@ -1414,7 +1287,7 @@ class IrysServiceSafe {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            address: address,
+            address: connectionStatus.account,
             network: isForcedIrysNetwork ? 'arweave' : 'ethereum',
           }),
         });
@@ -1462,14 +1335,19 @@ class IrysServiceSafe {
    */
   async uploadWithIrysTokens(data: any, tags: Tag[] = []): Promise<UploadResult> {
     try {
-      console.log("[irysServiceSafe] Starting upload with Irys testnet tokens");
-
-      // Verify wallet connection
-      const isConnected = await this.isWalletConnected();
-      console.log("[irysServiceSafe] Wallet connection check:", isConnected ? "Connected" : "Not connected");
-      if (!isConnected) {
-        throw new Error("Wallet is not connected. Please connect your wallet first.");
+      // Initial validation
+      if (!data) {
+        throw new Error("No data provided for upload");
       }
+      
+      // Check wallet connection
+      const isConnected = await this.isWalletConnected();
+      if (!isConnected) {
+        // Change error message to be more technical and less visible to user
+        throw new Error("Wallet connection required for upload operation.");
+      }
+      
+      console.log("[irysServiceSafe] Starting upload with Irys testnet tokens");
 
       // Get wallet address
       const account = await this.getWalletAddress();
@@ -1738,7 +1616,7 @@ class IrysServiceSafe {
   // Add method to get wallet balance for IRYS testnet tokens
   private async getIrysTestnetBalance(): Promise<string> {
     try {
-      if (!window.ethereum) {
+      if (!window.ethereum || !window.ethereum.request) {
         return '0';
       }
       
@@ -1812,7 +1690,9 @@ class IrysServiceSafe {
   private async getChainId(): Promise<string | null> {
     try {
       const ethereum = getEthereum();
-      if (!ethereum) return null;
+      if (!ethereum || !ethereum.request) {
+        throw new Error("Ethereum provider not available");
+      }
       
       const chainId = await ethereum.request({ method: 'eth_chainId' });
       return chainId;
@@ -1901,7 +1781,69 @@ class IrysServiceSafe {
     
     return validTags;
   }
+
+  // Function to handle formatting eth values
+  private formatEther(value: bigint | string): string {
+    // Simple implementation of formatEther for compatibility
+    const valueStr = value.toString();
+    const valueBigInt = BigInt(valueStr);
+    const divisor = BigInt(10) ** BigInt(18); // 10^18 (wei to ether)
+    const wholePart = valueBigInt / divisor;
+    const fractionalPart = valueBigInt % divisor;
+    
+    // Format to 18 decimals
+    let fractionalStr = fractionalPart.toString().padStart(18, '0');
+    // Remove trailing zeros
+    fractionalStr = fractionalStr.replace(/0+$/, '');
+    
+    if (fractionalStr === '') {
+      return wholePart.toString();
+    }
+    
+    return `${wholePart.toString()}.${fractionalStr}`;
+  }
+  
+  // Function to handle parsing eth values
+  private parseEther(value: string): bigint {
+    // Simple implementation of parseEther for compatibility
+    const parts = value.split('.');
+    let wholePart = parts[0] || '0';
+    let fractionalPart = parts[1] || '';
+    
+    // Pad or truncate to 18 decimals
+    fractionalPart = fractionalPart.padEnd(18, '0').slice(0, 18);
+    
+    const result = BigInt(wholePart) * BigInt(10) ** BigInt(18) + BigInt(fractionalPart);
+    return result;
+  }
+
+  // Helper method to create a provider from ethereum
+  private async createProviderFromEthereum(ethereum: any): Promise<any> {
+    try {
+      // Instead of using BrowserProvider or JsonRpcProvider directly,
+      // use a more compatible approach that doesn't require specific ethers imports
+      return {
+        provider: ethereum,
+        getSigner: async () => {
+          const accounts = await ethereum.request({ method: 'eth_accounts' });
+          return { 
+            getAddress: async () => accounts[0],
+            signMessage: async (message: string) => {
+              return ethereum.request({
+                method: 'personal_sign',
+                params: [message, accounts[0]]
+              });
+            }
+          };
+        }
+      };
+    } catch (err) {
+      console.error('[irysServiceSafe] Failed to create provider:', err);
+      throw err;
+    }
+  }
 }
 
 // Export a singleton instance
 export const irysServiceSafe = new IrysServiceSafe(); 
+//src/services/irysServiceSafe.ts

@@ -47,4 +47,5 @@ export interface TransactionDetails {
   message?: string;
   balanceBefore?: string;
   balanceAfter?: string;
+  size?: number; // File size in bytes
 } 

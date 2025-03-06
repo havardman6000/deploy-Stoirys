@@ -1,67 +1,147 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useSearchParams, useNavigate } from 'react-router-dom';
 import WalletConnect from './components/wallet/WalletConnect';
 import StorageTab from './components/storage/StorageTab';
 import RetrievalTab from './components/retrieval/RetrievalTab';
-import History from './components/common/History';
+import History from './components/History';
 import logo from './assets/stoirys-logo.svg';
-import { useIrys } from './hooks/useIrys';
-import IrysTokensUpload from './components/IrysTokensUpload';
+import { useIrys } from './contexts/IrysContext';
+import FileUpload from './components/FileUpload';
+import IrysBalance from './components/IrysBalance';
+import DocumentList from './components/DocumentList';
 import SignaturePrompt from './components/common/SignaturePrompt';
 import IrysFaucetGuide from './components/wallet/IrysFaucetGuide';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { WalletProvider } from './contexts/WalletContext';
+import { IrysProvider } from './contexts/IrysContext';
+import { FirebaseProvider } from './contexts/FirebaseContext';
+import LandingBanner from './components/LandingBanner';
+import AboutStoirys from './components/AboutStoirys';
+import AboutIrys from './components/AboutIrys';
+import { useWallet } from './contexts/WalletContext';
+import { Toaster } from 'react-hot-toast';
+
+// Define updated color theme
+const CYBERPUNK_THEME = {
+  background: '#1a1b1e',
+  surface: '#2a2b2e',
+  border: '#3a3b3e',
+  primary: '#00ffd5',
+  primaryHover: '#00e6c0',
+  text: '#ffffff',
+  textSecondary: '#cccccc',
+};
 
 // Icons for sidebar
 const HomeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   </svg>
 );
 
 const UploadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+  </svg>
+);
+
+const DocumentIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 );
 
 const DownloadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" transform="rotate(180 10 10)" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
   </svg>
 );
 
 const HistoryIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
 const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-text-secondary" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
 
-// Add a new icon for the Irys Tokens tab
 const TokenIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
-// Define allowed tabs
-type AllowedTabs = 'upload' | 'retrieve' | 'fund' | 'history';
+// Add new icons for About sections
+const AboutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const IrysIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+  </svg>
+);
+
+// Update AllowedTabs to include 'home'
+type AllowedTabs = 'home' | 'upload' | 'retrieve' | 'documents' | 'fund' | 'history' | 'about' | 'about-irys';
 
 // App component
 function App() {
-  const [activeTab, setActiveTab] = useState<AllowedTabs>('upload');
+  const [activeTab, setActiveTab] = useState<AllowedTabs>('home');
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { isDevnet } = useIrys();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [connectionInProgress, setConnectionInProgress] = useState(false);
+  const [forceHideNotification, setForceHideNotification] = useState(false);
+  
+  // Check for URL hash to set active tab
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      console.log("[App] Hash changed to:", hash);
+      
+      if (hash) {
+        const validTabs: AllowedTabs[] = ['home', 'upload', 'retrieve', 'documents', 'fund', 'history', 'about', 'about-irys'];
+        if (validTabs.includes(hash as AllowedTabs)) {
+          console.log("[App] Setting active tab from hash to:", hash);
+          setActiveTab(hash as AllowedTabs);
+          // Make sure we also clear any saved tab in localStorage after using it
+          localStorage.removeItem('stoirys-active-tab');
+        }
+      }
+    };
+    
+    // Initial check
+    handleHashChange();
+    
+    // Add event listener for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    console.log("[App] Added hashchange event listener");
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      console.log("[App] Removed hashchange event listener");
+    };
+  }, []);
+
+  // Check for saved active tab in localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem('stoirys-active-tab');
+    if (savedTab && savedTab !== activeTab) {
+      setActiveTab(savedTab as AllowedTabs);
+      // Clear after using
+      localStorage.removeItem('stoirys-active-tab');
+    }
+  }, []);
 
   // Check for tx parameter in URL and set active tab to retrieve if present
   useEffect(() => {
@@ -71,9 +151,21 @@ function App() {
     }
   }, [searchParams]);
 
-  // Update wallet connection status
+  // Update wallet connection status with simplified approach
   const handleConnectionChange = (connected: boolean) => {
+    console.log(`Wallet connection changed: ${connected ? 'Connected' : 'Disconnected'}`);
+    
     setIsWalletConnected(connected);
+    setConnectionInProgress(false);
+    
+    // If the wallet is connected, reset the notification state
+    if (connected) {
+      console.log("Connected: Updating wallet state");
+      setForceHideNotification(false);
+    } else {
+      console.log("Disconnected: Updating wallet state");
+      setForceHideNotification(false);
+    }
   };
 
   // Handle search in header
@@ -96,7 +188,7 @@ function App() {
     // Listen for changeActiveTab custom event
     const handleChangeTab = (event: CustomEvent) => {
       const { tab } = event.detail;
-      if (tab && (tab === 'upload' || tab === 'retrieve' || tab === 'fund' || tab === 'history')) {
+      if (tab && (tab === 'upload' || tab === 'retrieve' || tab === 'documents' || tab === 'fund' || tab === 'history')) {
         setActiveTab(tab as AllowedTabs);
       }
     };
@@ -108,19 +200,135 @@ function App() {
     };
   }, []);
 
+  // Handle click on "Learn More" button in the home page
+  const navigateToAboutStoirys = () => {
+    setActiveTab('about');
+    setIsMobileMenuOpen(false);
+  };
+
+  // Make navigateToAboutStoirys available in the React context and listen for tab change events
+  useEffect(() => {
+    // Add navigateToAboutStoirys to window for access from other components
+    // @ts-ignore
+    window.navigateToAboutStoirys = navigateToAboutStoirys;
+    
+    // Make setActiveTab available globally for direct access
+    // @ts-ignore
+    window.setActiveTab = (tab: string) => {
+      console.log("[App] Global setActiveTab called with:", tab);
+      if (['home', 'upload', 'retrieve', 'documents', 'fund', 'history', 'about', 'about-irys'].includes(tab)) {
+        setActiveTab(tab as AllowedTabs);
+        return true;
+      }
+      console.log("[App] Invalid tab requested:", tab);
+      return false;
+    };
+    
+    // Listen for custom tab change events
+    const handleTabChangeEvent = (event: CustomEvent) => {
+      console.log("Tab change event received:", event);
+      console.log("Event detail:", event.detail);
+      
+      if (event.detail && event.detail.tab) {
+        console.log("Setting active tab to:", event.detail.tab);
+        setActiveTab(event.detail.tab as AllowedTabs);
+        
+        // Verify the tab change
+        setTimeout(() => {
+          console.log("Active tab after event:", activeTab);
+        }, 100);
+      } else {
+        console.log("Invalid event detail structure:", event.detail);
+      }
+    };
+    
+    console.log("Adding tab change event listeners for all event types");
+    document.addEventListener('change-tab', handleTabChangeEvent as EventListener);
+    document.addEventListener('changeTab', handleTabChangeEvent as EventListener);
+    document.addEventListener('tab-change', handleTabChangeEvent as EventListener);
+    
+    return () => {
+      console.log("Removing tab change event listeners");
+      // @ts-ignore
+      window.navigateToAboutStoirys = undefined;
+      // @ts-ignore
+      window.setActiveTab = undefined;
+      document.removeEventListener('change-tab', handleTabChangeEvent as EventListener);
+      document.removeEventListener('changeTab', handleTabChangeEvent as EventListener);
+      document.removeEventListener('tab-change', handleTabChangeEvent as EventListener);
+    };
+  }, []);
+
+  // Log active tab changes
+  useEffect(() => {
+    console.log("Active tab changed to:", activeTab);
+  }, [activeTab]);
+
+  // Listen for wallet disconnection events
+  useEffect(() => {
+    const handleWalletDisconnection = () => {
+      console.log("App detected wallet disconnection event");
+      
+      // Ensure wallet state reflects disconnection
+      setIsWalletConnected(false);
+      
+      // Clear localStorage values related to wallet connection
+      localStorage.removeItem('wallet-connection-state');
+      localStorage.removeItem('walletconnect');
+      localStorage.removeItem('WALLETCONNECT_DEEPLINK_CHOICE');
+      
+      // Also set a flag to prevent reconnection
+      localStorage.setItem('wallet-manual-disconnect', 'true');
+      
+      // Reset error notifications
+      setForceHideNotification(false);
+      
+      // Always navigate to home page on disconnect
+      setActiveTab('home');
+    };
+    
+    // Add event listener for wallet disconnection
+    document.addEventListener('wallet-disconnected', handleWalletDisconnection);
+    
+    // Check for manual disconnect flag on page load
+    if (localStorage.getItem('wallet-manual-disconnect') === 'true') {
+      // User previously manually disconnected, ensure we stay disconnected
+      setIsWalletConnected(false);
+    }
+    
+    return () => {
+      document.removeEventListener('wallet-disconnected', handleWalletDisconnection);
+    };
+  }, [activeTab]);
+
   // Render active tab content
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'home':
+        return (
+          <div className="p-4 md:p-6">
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-2xl font-semibold text-[#00ffd5] mb-4">Secure File Storage Platform</h2>
+              <LandingBanner />
+            </div>
+          </div>
+        );
       case 'upload':
-        return <StorageTab />;
+        return <FileUpload onUploadSuccess={handleSelectFromHistory} />;
       case 'retrieve':
         return <RetrievalTab />;
+      case 'documents':
+        return <DocumentList searchQuery={searchQuery} />;
       case 'fund':
-        return <IrysTokensUpload />;
+        return <IrysBalance />;
       case 'history':
-        return <History onSelectItem={handleSelectFromHistory} />;
+        return <History />;
+      case 'about':
+        return <AboutStoirys />;
+      case 'about-irys':
+        return <AboutIrys />;
       default:
-        return <StorageTab />;
+        return null;
     }
   };
   
@@ -129,522 +337,253 @@ function App() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  return (
-    <div className="min-h-screen bg-background text-text-primary">
-      {/* Global Header - always visible */}
-      <header className="bg-white border-b border-gray-200 p-4 sticky top-0 z-20">
-        <div className="container mx-auto flex items-center justify-between">
-          {/* Logo */}
+  // Function to set active tab and close mobile menu
+  const setActiveTabAndCloseMobileMenu = (tab: AllowedTabs) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false); // Close mobile menu when a tab is selected
+  };
+
+  // Main app structure
+  const AppContent = () => (
+    <div className="min-h-screen bg-[#1a1b1e] text-white flex flex-col">
+      <Toaster position="top-right" />
+      {/* Global Wallet Connection Notification - Fixed at top */}
+      {!isWalletConnected && !forceHideNotification && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#00ffd5] to-[#00e6c0] text-[#1a1b1e] py-2 px-4 shadow-md flex items-center justify-center">
           <div className="flex items-center">
-            <img src={logo} alt="Irys Logo" className="h-10 md:h-12" />
-            
-            {/* Mobile Menu Toggle Button */}
-            <button 
-              className="ml-3 p-2 rounded-md text-gray-500 md:hidden"
-              onClick={toggleMobileMenu}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Search bar */}
-          <div className="relative flex-1 max-w-xl mx-4 hidden sm:block">
-            <input
-              type="text"
-              placeholder="Search or enter TX ID..."
-              className="w-full p-2 pl-8 pr-3 text-sm border rounded-md"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-            />
-            <svg
-              className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
+            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
+            <span className="font-medium hidden sm:inline">Please connect your wallet to use all features</span>
+            <span className="font-medium sm:hidden">Connect wallet</span>
           </div>
-          
-          {/* Wallet Connect Button - without network information */}
-          <div className="pl-0 sm:pl-4">
-            <WalletConnect onConnectionChange={handleConnectionChange} />
-          </div>
-        </div>
-        
-        {/* Mobile Search - Only visible on smaller screens */}
-        <div className="mt-4 sm:hidden">
-          <div className="relative w-full">
-            <input
-              type="text"
-              placeholder="Search or enter TX ID..."
-              className="w-full p-2 pl-8 pr-3 text-base border rounded-md"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleSearch}
-              style={{ fontSize: '16px' }} /* Ensuring at least 16px font size for mobile */
-            />
-            <svg
-              className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-        </div>
-        
-        {/* Mobile Menu - Fullscreen overlay */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-30 bg-white md:hidden pt-16">
-            <nav className="p-4">
-              <div className="space-y-4">
-                <button
-                  onClick={() => { setActiveTab('upload'); setIsMobileMenuOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 text-base rounded-md ${
-                    activeTab === 'upload'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 bg-gray-50'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'upload' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
-                  <span>Upload</span>
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('retrieve'); setIsMobileMenuOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 text-base rounded-md ${
-                    activeTab === 'retrieve'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 bg-gray-50'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'retrieve' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  <span>Retrieve</span>
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('fund'); setIsMobileMenuOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 text-base rounded-md ${
-                    activeTab === 'fund'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 bg-gray-50'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'fund' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>Irys Tokens</span>
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('history'); setIsMobileMenuOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 text-base rounded-md ${
-                    activeTab === 'history'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 bg-gray-50'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'history' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>History</span>
-                </button>
-              </div>
-              
-              {/* Mobile Feature Section */}
-              <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  IRYS Network Features
-                </h3>
-                <a
-                  href="https://storage-explorer.irys.xyz/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-purple-50 text-purple-700 hover:bg-purple-100 px-4 py-3 text-base font-medium rounded-md mt-2"
-                >
-                  <span className="w-2 h-2 bg-purple-400 rounded-full mr-2 inline-block"></span>
-                  IRYS L1 Transactions
-                </a>
-              </div>
-            </nav>
-          </div>
-        )}
-      </header>
-      
-      <div className="flex h-[calc(100vh-68px)] md:h-[calc(100vh-68px)] overflow-hidden">
-        {/* Sidebar - Hidden on mobile, visible on desktop */}
-        <aside className="w-64 bg-white border-r border-gray-200 hidden md:block">
-          <div className="h-full flex flex-col">
-            {/* Network Information */}
-            {/* <div className="p-4 bg-gray-50">
-              <div className="bg-primary/5 p-3 rounded-md">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  IRYS Network Information:
-                </h3>
-                <ul className="list-disc pl-5 text-sm text-blue-600">
-                  <li>All uploads use IRYS tokens</li>
-                  <li>Data is stored permanently on the network</li>
-                  <li>No gas fees required</li>
-                </ul>
-              </div>
-            </div> */}
-
-            {/* Navigation */}
-            <nav className="mt-6 px-4 flex-1">
-              <div className="space-y-2">
-                <button
-                  onClick={() => setActiveTab('upload')}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded-md ${
-                    activeTab === 'upload'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'upload' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
-                  <span>Upload</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('retrieve')}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded-md ${
-                    activeTab === 'retrieve'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'retrieve' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  <span>Retrieve</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('fund')}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded-md ${
-                    activeTab === 'fund'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'fund' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>Irys Tokens</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded-md ${
-                    activeTab === 'history'
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <svg
-                    className={`mr-3 h-5 w-5 ${
-                      activeTab === 'history' ? 'text-white' : 'text-gray-500'
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>History</span>
-                </button>
-              </div>
-            </nav>
-
-            {/* IRYS Network Features */}
-            <div className="px-4 py-3 border-t border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                IRYS Network Features
-              </h3>
-              <nav className="mt-1">
-                <div className="space-y-1">
-                  <a
-                    href="https://storage-explorer.irys.xyz/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-purple-50 text-purple-700 hover:bg-purple-100 flex items-center px-3 py-2 text-sm font-medium rounded-md"
-                  >
-                    <span className="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
-                    IRYS L1 Transactions
-                  </a>
-                </div>
-              </nav>
-            </div>
-
-            {/* IRYS Faucet Guide */}
-            <div className="px-4 py-3 border-t border-gray-200">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                How to Get IRYS Tokens
-              </h3>
-              <div className="bg-purple-50 p-3 rounded-md text-sm">
-                <a 
-                  href="https://irys.xyz/faucet"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-purple-700 font-medium hover:underline"
-                >
-                  Visit IRYS Faucet
-                </a>
-                <ol className="mt-2 ml-4 space-y-1 text-purple-700 list-decimal">
-                  <li>Enter the faucet site</li>
-                  <li>Enter your wallet address</li>
-                  <li>Request IRYS tokens</li>
-                  <li>Wait a few seconds for tokens to arrive</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Add IrysFaucetGuide at the bottom of the sidebar */}
-            {import.meta.env.VITE_IRYS_DEVNET === 'true' && (
-              <div className="mt-auto px-4 py-4">
-                <IrysFaucetGuide />
-              </div>
-            )}
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <ErrorBoundary>
-            <Routes>
-              <Route path="*" element={renderActiveTab()} />
-            </Routes>
-          </ErrorBoundary>
-        </main>
-      </div>
-
-      {/* Bottom Mobile Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20">
-        <div className="grid grid-cols-4 gap-1">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`flex flex-col items-center justify-center py-3 ${
-              activeTab === 'upload' ? 'text-primary' : 'text-gray-600'
-            }`}
-          >
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-            <span className="text-xs mt-1">Upload</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('retrieve')}
-            className={`flex flex-col items-center justify-center py-3 ${
-              activeTab === 'retrieve' ? 'text-primary' : 'text-gray-600'
-            }`}
-          >
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            <span className="text-xs mt-1">Retrieve</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('fund')}
-            className={`flex flex-col items-center justify-center py-3 ${
-              activeTab === 'fund' ? 'text-primary' : 'text-gray-600'
-            }`}
-          >
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span className="text-xs mt-1">Tokens</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex flex-col items-center justify-center py-3 ${
-              activeTab === 'history' ? 'text-primary' : 'text-gray-600'
-            }`}
-          >
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span className="text-xs mt-1">History</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Display IrysFaucetGuide in sidebar on devnet */}
-      {isDevnet && (
-        <div className="fixed bottom-20 left-4 z-10 max-w-xs md:hidden">
-          <IrysFaucetGuide />
         </div>
       )}
       
-      {/* Signature prompt component */}
-      <SignaturePrompt />
+      {/* Main content with conditional padding */}
+      <div className={`flex flex-1 ${!isWalletConnected && !forceHideNotification ? 'pt-10' : ''}`}>
+        {/* Sidebar */}
+        <nav className={`fixed md:static inset-0 z-20 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out bg-[#2a2b2e] md:w-64 lg:w-72 p-4 border-r border-[#3a3b3e] overflow-y-auto`}>
+          <div className="sticky top-0 z-10 flex flex-col h-full overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#00ffd5] to-[#00e6c0] text-[#1a1b1e]">
+              <div className="flex items-center space-x-2">
+                <div className="h-8 w-8 flex items-center justify-center rounded-md bg-[#1a1b1e] text-[#00ffd5]">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+                <span className="text-xl font-semibold">Stoirys</span>
+              </div>
+              <button
+                onClick={toggleMobileMenu}
+                className="md:hidden p-2 rounded-md hover:bg-[#1a1b1e]/10"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Navigation */}
+            <div className="px-4 py-4 flex-1">
+              <div className="space-y-1">
+                <NavItem 
+                  active={activeTab === 'home'} 
+                  icon={<HomeIcon />} 
+                  label="Home" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('home')}
+                />
+                <NavItem 
+                  active={activeTab === 'upload'} 
+                  icon={<UploadIcon />} 
+                  label="Upload" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('upload')}
+                />
+                <NavItem 
+                  active={activeTab === 'retrieve'} 
+                  icon={<DownloadIcon />} 
+                  label="Retrieve" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('retrieve')}
+                />
+                <NavItem 
+                  active={activeTab === 'fund'} 
+                  icon={<TokenIcon />} 
+                  label="Irys Balance" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('fund')}
+                />
+                <NavItem 
+                  active={activeTab === 'history'} 
+                  icon={<HistoryIcon />} 
+                  label="History" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('history')}
+                />
+                <NavItem 
+                  active={activeTab === 'about'} 
+                  icon={<AboutIcon />} 
+                  label="What is Stoirys?" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('about')}
+                />
+                <NavItem 
+                  active={activeTab === 'about-irys'} 
+                  icon={<IrysIcon />} 
+                  label="What is Irys?" 
+                  onClick={() => setActiveTabAndCloseMobileMenu('about-irys')}
+                />
+              </div>
+            </div>
+
+            {/* Network Features */}
+            <div className="px-4 py-3 border-t border-[#3a3b3e]">
+              <h3 className="text-xs font-semibold text-[#00ffd5] uppercase tracking-wider mb-2">
+                IRYS Network Features
+              </h3>
+              <a
+                href="https://irys.xyz/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-[#3a3b3e] text-[#00ffd5] hover:bg-[#4a4b4e] flex items-center px-3 py-2 text-sm font-medium rounded-md mb-2"
+              >
+                <span className="w-2 h-2 bg-[#00ffd5] rounded-full mr-2"></span>
+                IRYS Devnet Transactions
+              </a>
+            </div>
+
+            {/* Faucet Guide */}
+            <div className="px-4 py-3 border-t border-[#3a3b3e]">
+              <h3 className="text-xs font-semibold text-[#00ffd5] uppercase tracking-wider mb-2">
+                Need Sepolia ETH?
+              </h3>
+              <div className="mb-3">
+                <div className="flex flex-col space-y-2">
+                  <a 
+                    href="https://cloud.google.com/application/web3/faucet/ethereum/sepolia"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#00ffd5] hover:text-[#00e6c0] flex items-center px-1 py-1 text-sm font-medium"
+                  >
+                    <span className="w-2 h-2 bg-[#00ffd5] rounded-full mr-2"></span>
+                    Google Cloud Faucet
+                  </a>
+                  <a 
+                    href="https://sepoliafaucet.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#00ffd5] hover:text-[#00e6c0] flex items-center px-1 py-1 text-sm font-medium"
+                  >
+                    <span className="w-2 h-2 bg-[#00ffd5] rounded-full mr-2"></span>
+                    Alchemy Faucet
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Version Information */}
+            <div className="px-4 py-2 text-xs text-gray-400 border-t border-[#3a3b3e]">
+              <p>Stoirys - Irys Devnet</p>
+            </div>
+          </div>
+        </nav>
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <header className="bg-[#2a2b2e] border-b border-[#3a3b3e] p-3 sm:p-4 sticky top-0 z-10">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <button onClick={toggleMobileMenu} className="md:hidden mr-3 text-gray-400 hover:text-white">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <h1 className="text-lg sm:text-xl font-bold text-[#00ffd5] truncate flex items-center">
+                  {activeTab === 'home' ? (
+                    <>
+                      <div className="h-6 w-6 mr-2 flex items-center justify-center rounded-md bg-[#1a1b1e] text-[#00ffd5] sm:hidden">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      </div>
+                      <span className="hidden sm:inline">Decentralized Storage Platform</span>
+                      <span className="sm:hidden">Stoirys</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">
+                        {activeTab === 'upload' && 'Upload Files to IRYS Network'}
+                        {activeTab === 'retrieve' && 'Retrieve Files from IRYS Network'}
+                        {activeTab === 'documents' && 'Your Documents'}
+                        {activeTab === 'fund' && 'Fund Your IRYS Balance'}
+                        {activeTab === 'history' && 'Transaction History'}
+                        {activeTab === 'about' && 'About Stoirys'}
+                        {activeTab === 'about-irys' && 'About Irys Network'}
+                      </span>
+                      <span className="sm:hidden">
+                        {activeTab === 'upload' && 'Upload Files'}
+                        {activeTab === 'retrieve' && 'Retrieve Files'}
+                        {activeTab === 'documents' && 'Documents'}
+                        {activeTab === 'fund' && 'Fund Balance'}
+                        {activeTab === 'history' && 'History'}
+                        {activeTab === 'about' && 'About Stoirys'}
+                        {activeTab === 'about-irys' && 'About Irys'}
+                      </span>
+                    </>
+                  )}
+                </h1>
+              </div>
+              <div className="flex items-center">
+                <WalletConnect onConnectionChange={handleConnectionChange} />
+              </div>
+            </div>
+          </header>
+
+          <main className="overflow-y-auto p-3 sm:p-4 md:p-6">
+            <ErrorBoundary>
+              {renderActiveTab()}
+            </ErrorBoundary>
+          </main>
+        </div>
+
+        {/* Signature Prompt */}
+        <SignaturePrompt />
+      </div>
     </div>
   );
+
+  return (
+    <WalletProvider>
+      <IrysProvider>
+        <FirebaseProvider>
+          <AppContent />
+        </FirebaseProvider>
+      </IrysProvider>
+    </WalletProvider>
+  );
 }
+
+// Update NavItem component styling
+const NavItem = ({ 
+  active, 
+  icon, 
+  label, 
+  onClick 
+}: { 
+  active: boolean; 
+  icon: React.ReactNode; 
+  label: string; 
+  onClick: () => void;
+}) => (
+  <button
+    className={`w-full flex items-center px-3 py-2.5 text-base font-medium rounded-md ${
+      active 
+      ? 'bg-[#3a3b3e] text-[#00ffd5]'
+      : 'text-gray-300 hover:bg-[#3a3b3e] hover:text-[#00ffd5]'
+    }`}
+    onClick={onClick}
+  >
+    <div className="flex items-center min-w-0">
+      <span className="flex-shrink-0">{icon}</span>
+      <span className="ml-2 whitespace-nowrap">{label}</span>
+    </div>
+  </button>
+);
 
 export default App;

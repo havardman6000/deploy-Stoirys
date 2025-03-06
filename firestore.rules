@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read and write only to their own data
+    match /users/{walletAddress} {
+      allow read, write: if request.auth != null && 
+                          (request.auth.uid == walletAddress || 
+                           request.auth.token.wallet_address == walletAddress);
+      
+      // Allow access to folders and files under a user's document
+      match /folders/{folderId} {
+        allow read, write: if request.auth != null && 
+                            (request.auth.uid == walletAddress || 
+                             request.auth.token.wallet_address == walletAddress);
+      }
+      
+      match /files/{fileId} {
+        allow read, write: if request.auth != null && 
+                            (request.auth.uid == walletAddress || 
+                             request.auth.token.wallet_address == walletAddress);
+      }
+    }
+    
+    // Transactions collection requires a composite index on:
+    // - userId (ascending)
+    // - createdAt (descending)
+    // Create this index at: https://console.firebase.google.com/v1/r/project/stoirys-drive/firestore/indexes
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null && 
+                          (request.auth.uid == resource.data.userId || 
+                           request.auth.token.wallet_address == resource.data.userId);
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

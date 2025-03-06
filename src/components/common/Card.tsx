@@ -16,11 +16,11 @@ const Card: React.FC<CardProps> = ({
   noPadding = false
 }) => {
   return (
-    <div className={`bg-white rounded-lg border border-border-light overflow-hidden ${className}`}>
+    <div className={`bg-[#2a2b2e] rounded-lg border border-[#3a3b3e] overflow-hidden ${className}`}>
       {title && (
-        <div className="px-6 py-4 border-b border-border-light flex justify-between items-center">
+        <div className="px-6 py-4 border-b border-[#3a3b3e] flex justify-between items-center">
           {typeof title === 'string' ? (
-            <h3 className="text-lg font-medium text-text-primary">{title}</h3>
+            <h3 className="text-lg font-medium text-[#00ffd5]">{title}</h3>
           ) : (
             title
           )}
